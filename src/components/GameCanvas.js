@@ -263,7 +263,7 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
         localInputs.sayed = buildInput('sayed');
         localInputs.yasmin = buildInput('yasmin');
         for (const id of ['sayed', 'yasmin']) { gameRef.current.applyInput(id, localInputs[id]); }
-        stepHost(gameRef.current, localInputs, net, false);
+        stepHost(gameRef.current, localInputs, net, false, dt);
       } else if (session.role === 'host') {
         const my = session.character;
         const guest = other(my);
@@ -272,7 +272,7 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
         gameRef.current.applyInput(my, localInputs[my]);
         gameRef.current.applyInput(guest, netInput[guest] || neutralInput(guest));
         // send our input to the (inverse) — host doesn't send input; it receives
-        stepHost(gameRef.current, { [my]: localInputs[my], [guest]: netInput[guest] || neutralInput(guest) }, net, true);
+        stepHost(gameRef.current, { [my]: localInputs[my], [guest]: netInput[guest] || neutralInput(guest) }, net, true, dt);
       } else {
         // guest
         const my = session.character;
@@ -306,7 +306,7 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
       raf = requestAnimationFrame(loop);
     }
 
-    function stepHost(game, inputs, net, isOnline) {
+    function stepHost(game, inputs, net, isOnline, dt) {
       game.update(dt, inputs);
       if (net && isOnline) {
         snapshotTimer += dt;

@@ -44,7 +44,7 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome })
         {/* right: timer + boss */}
         <div className="hud-panel" style={{ textAlign: 'center' }}>
           <div className="lbl">الوقت</div>
-          <div className="timer">{time.toFixed(0)}s</div>
+          <div className="timer">{(time ?? 0).toFixed(0)}s</div>
           {boss && (
             <div style={{ marginTop: 6 }}>
               <div className="lbl">الجوليم</div>
