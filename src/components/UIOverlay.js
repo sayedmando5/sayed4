@@ -1,10 +1,21 @@
 'use client';
 
-const TOTAL_LEVELS = 5;
+import { useState } from 'react';
 
-export default function UIOverlay({ data, status, onRetry, onContinue, onHome }) {
+const TOTAL_LEVELS = 8;
+
+export default function UIOverlay({ data, status, onRetry, onContinue, onHome, roomCode, role, joinedCode }) {
   const { lives, levelIndex, time, hint, boss, worldName, arabicName, toast } = data || {};
   const num = (levelIndex ?? 0) + 1;
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(roomCode || '');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) { /* ignore */ }
+  };
 
   const souls = (id) => {
     const n = lives?.[id] ?? 0;
@@ -49,7 +60,7 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome })
             <div style={{ marginTop: 6 }}>
               <div className="lbl">الجوليم</div>
               <div className="bar-bg">
-                <div className="bar-fill" style={{ width: `${(boss.hp / 3) * 100}%` }} />
+                <div className="bar-fill" style={{ width: `${(boss.hp / (boss.max || 5)) * 100}%` }} />
               </div>
               <div style={{ fontSize: 11, color: boss.shield ? '#ff6b6b' : '#6be07a' }}>
                 {boss.shield ? '🛡 درع' : '⚔ عرّي'}
@@ -69,11 +80,24 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome })
       {hint && <div className="hint">💡 {hint}</div>}
 
       {/* ---------- OVERLAYS ---------- */}
-      {status === 'waiting' && (
+      {role === 'guest' && status === 'waiting' && (
+        <Overlay>
+          <div className="big-emoji">📡</div>
+          <h2>جارٍ الاتصال بالشريك…</h2>
+          <p>نحاول الوصول إلى الغرفة <b style={{ color: '#ffd76b' }}>{joinedCode}</b>.</p>
+          <p className="muted">تأكد من أن شريكك أنشأ الغرفة وأنّ الكود صحيح.</p>
+        </Overlay>
+      )}
+
+      {role === 'host' && status === 'waiting' && (
         <Overlay>
           <div className="big-emoji">🤝</div>
           <h2>في انتظار شريكك…</h2>
-          <p>شارك الرمز أعلاه ليبدأ الجزء الثاني من الرحلة.</p>
+          <p>شارك هذا الرمز مع شريكك ليبدأ الجزء الثاني من الرحلة:</p>
+          <div className="code big">{roomCode || '…'}</div>
+          <button className="btn" onClick={copyCode} style={{ marginTop: 10 }}>
+            {copied ? '✅ تم النسخ' : '📋 نسخ الرمز'}
+          </button>
         </Overlay>
       )}
 

@@ -16,7 +16,7 @@
   - الوقوف معاً على لوحتَين لفتح البوابة، أو لتشغيل المولد، أو لرفع المصعد.
   - تحريك صناديق ثقيلة فوق لوحات الضغط.
 - **ألغاز صعبة ومتنوعة**: لوحات ضغط، روافع، محطات اختراق، أبواب وبوابات، جسور نور، أحزمة ناقلة، نوابض، مراوح، أرض جليد، جسور متأكّلة، ممرّات ليزر متوقّتة، بوابات نقل (Teleport)، أعداء، ونقاط حفظ.
-- **5 عوالم متقنة** بمواضيع ومراحل متدرّجة الصعوبة + **زنزانة زعيم نهائي (Golem)** بثلاث مراحل.
+- **8 عوالم متقنة** بمواضيع ومراحل متدرّجة الصعوبة (1 → 8) + **زعيمان**: جوليم (3 ضربات) في العالم 5، و"نكس الفراغ" (5 ضربات، أسرع) في العالم 8 — كلاهما يتطلّب وقوف اللاعبَين معاً على اللوحتين أثناء انخفاض الدرع.
 - **نظام مراحل “Modular”**: أي عالم جديد = ملف واحد في `levels/` + سطر في `levels/index.js`. لا حاجة للمس المحرك.
 - **نظام شبكة PeerJS (WebRTC)**: رمز غرفة قصير تشاركه مع شريكك، واتصال مباشر بلا سيرفر.
 - **صوت WebAudio** مولّد لحظياً (بدون ملفات صوت) + مؤثرات بصرية + واجهة عربية RTL جميلة.
@@ -112,19 +112,19 @@ sayed-yasmin-odyssey/
       └─ levels/
          ├─ helpers.js       # دوال بناء المراحل
          ├─ index.js         # سجلّ المراحل (أضِف عالماً هنا)
-         └─ world-1..5.js    # العوالم الخمسة
+         └─ world-1..8.js    # العوالم الثمانية (صعوبة 1 → 8)
 ```
 
 ---
 
 ## 🧩 إضافة عالم / مرحلة جديدة (Modular)
 
-1. أنشئ `src/lib/game/levels/world-6.js` مستخدِماً الدوال من `helpers.js`.
-2. عرّف `spawn` و `goal` و `platforms` و `objects` و `coins` و `hints` و `decorations`.
+1. أنشئ `src/lib/game/levels/world-9.js` مستخدِماً الدوال من `helpers.js`.
+2. عرّف `spawn` و `goal` و `platforms` و `objects` و `coins` و `hints` و `decorations` (وأيضاً `boss` اختيارياً).
 3. أضِفه في `levels/index.js`:
    ```js
-   import world6 from './world-6.js';
-   export const LEVELS = [world1, world2, world3, world4, world5, world6];
+   import world9 from './world-9.js';
+   export const LEVELS = [world1, world2, world3, world4, world5, world6, world7, world8, world9];
    ```
 4. حدّث `TOTAL_LEVELS` في `components/UIOverlay.js`.
 

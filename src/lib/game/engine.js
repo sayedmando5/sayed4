@@ -67,6 +67,9 @@ export class Game {
     // instantiate entities
     this.platforms = (lvl.platforms || []).map((p) => ({ ...p, base: p }));
     this.objects = (lvl.objects || []).map((o) => ({ ...o, spawn: { ...o } }));
+    // The level's goal lives at the top level, but the win scanner looks in
+    // `objects` — inject it so the win condition can actually fire.
+    if (lvl.goal) this.objects.push({ ...lvl.goal, spawn: { ...lvl.goal } });
     this.coins = (lvl.coins || []).map((c) => ({ ...c }));
     this.stars = (lvl.stars || []).map((s) => ({ ...s }));
     this.hints = (lvl.hints || []).map((h) => ({ ...h }));
@@ -109,6 +112,7 @@ export class Game {
 
     // boss
     this.boss = lvl.boss ? this._makeBoss(lvl.boss) : null;
+    this.bossMax = this.boss ? this.boss.hp : 3;
 
     // dynamic runtime flags
     this.bridgeBodies = {};   // id -> platform body for spawned bridges
@@ -632,8 +636,13 @@ export class Game {
   }
 
   _onPlate(p, o) {
+    // A plate is a thin pad that sits ON the ground. Entities stand on the
+    // ground (feet = plate bottom), so accept feet anywhere within the plate's
+    // vertical extent plus a small tolerance, and require the horizontal centre
+    // to be over the plate.
     const cx = p.x + p.w / 2;
-    return cx > o.x - 6 && cx < o.x + o.w + 6 && Math.abs((p.y + p.h) - o.y) < 20;
+    const feet = p.y + p.h;
+    return cx > o.x - 8 && cx < o.x + o.w + 8 && feet > o.y - 22 && feet < o.y + o.h + 22;
   }
 
   _updateCrate(o, dt) {
@@ -962,6 +971,18 @@ export class Game {
     }
   }
 
+  _topColor() {
+    switch (this.level.theme) {
+      case 'cave': return '#d48a4a';
+      case 'temple': return '#e0b878';
+      case 'ice': return '#e0f2ff';
+      case 'volcano': return '#ff8a4a';
+      case 'ruins': return '#b8a8d8';
+      case 'sky': return '#9fc0ff';
+      default: return '#4ca85a';
+    }
+  }
+
   _themeShape(theme, x, y, layer) {
     const ctx = this.ctx;
     const alpha = 0.16;
@@ -978,6 +999,15 @@ export class Game {
     } else if (theme === 'ice') {
       ctx.fillStyle = '#bfe4ff';
       ctx.fillRect(x, y, 26, 200);
+    } else if (theme === 'volcano') {
+      ctx.fillStyle = '#ff7a3a';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 20, y - 110); ctx.lineTo(x + 40, y); ctx.fill();
+    } else if (theme === 'ruins') {
+      ctx.fillStyle = '#8a7aa0';
+      ctx.fillRect(x, y, 20, 200);
+    } else if (theme === 'sky') {
+      ctx.fillStyle = '#9fc0ff';
+      ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI * 2); ctx.fill();
     } else {
       ctx.fillStyle = '#9fc0ff';
       ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI * 2); ctx.fill();
@@ -1025,9 +1055,9 @@ export class Game {
       if (pl.type === 'oneway') col = '#6a7a8a';
       ctx.fillStyle = col;
       ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
-      // grass top for forest
+      // themed top strip
       if (pl.type === 'platform') {
-        ctx.fillStyle = this.level.theme === 'cave' ? '#d48a4a' : '#4ca85a';
+        ctx.fillStyle = this._topColor();
         ctx.fillRect(pl.x, pl.y, pl.w, 8);
       }
       // conveyor arrows
@@ -1256,9 +1286,10 @@ export class Game {
       ctx.fillStyle = '#ffd0a0';
       ctx.beginPath(); ctx.arc(o.x, o.y, 3, 0, Math.PI * 2); ctx.fill();
     }
-    // hp bar
+    // hp bar (dynamic max)
+    const max = this.bossMax || 3;
     ctx.fillStyle = '#222'; ctx.fillRect(b.x - 20, b.y - 20, b.w + 40, 10);
-    ctx.fillStyle = '#e05a5a'; ctx.fillRect(b.x - 20, b.y - 20, (b.w + 40) * (b.hp / 3), 10);
+    ctx.fillStyle = '#e05a5a'; ctx.fillRect(b.x - 20, b.y - 20, (b.w + 40) * (b.hp / max), 10);
     ctx.restore();
   }
 

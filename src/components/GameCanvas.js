@@ -111,7 +111,8 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
     let snapshotTimer = 0;
 
     if (net) {
-      net._onData = (data) => {
+      net.onData = (data) => {   // note: must attach to `onData`, not `_onData`
+
         if (data.type === 'snap') {
           lastSnap = data.snapshot;
           lastSnapTime = performance.now();
@@ -200,6 +201,15 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
         winPending = false;
         if (cbRef.current.onStatus) cbRef.current.onStatus('play');
       }, 2600);
+    }
+
+    // tiny debug hook so automated tests can verify net sync
+    if (typeof window !== 'undefined') {
+      window.__syo = () => ({
+        level: gameRef.current?.levelIndex,
+        sayed: gameRef.current?.players?.sayed?.x,
+        yasmin: gameRef.current?.players?.yasmin?.x,
+      });
     }
 
     // expose retry for parent UI
@@ -330,7 +340,7 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
           levelIndex: g.levelIndex,
           time: g.time,
           hint: hintKey,
-          boss: g.boss && !g.boss.dead ? { hp: g.boss.hp, shield: g.boss.shield } : null,
+          boss: g.boss && !g.boss.dead ? { hp: g.boss.hp, max: g.bossMax || 5, shield: g.boss.shield } : null,
           worldName: g.level.name,
           arabicName: g.level.arabicName,
         });

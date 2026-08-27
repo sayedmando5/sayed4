@@ -20,6 +20,22 @@ export default function Lobby({
 
   return (
     <div className="card" style={{ maxWidth: 520 }}>
+      {/* mode toggle */}
+      <div className="mode-toggle">
+        <button
+          className={`mtab ${mode === 'create' ? 'active' : ''}`}
+          onClick={() => setMode('create')}
+        >
+          ✨ إنشاء غرفة
+        </button>
+        <button
+          className={`mtab ${mode === 'join' ? 'active' : ''}`}
+          onClick={() => setMode('join')}
+        >
+          🔗 انضمام لغرفة
+        </button>
+      </div>
+
       <h2 className="title">{mode === 'create' ? 'إنشاء غرفة' : 'الانضمام لغرفة'}</h2>
       <p className="sub">اختر شخصيتك، ثم ادعُ شريكك ليلعب معك</p>
 

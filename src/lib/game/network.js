@@ -89,7 +89,11 @@ export class Network {
         conn.send({ type: 'join', guestChar: me.character });
         me.onState({ stage: 'connecting' });
       });
-      conn.on('data', (data) => me.onData(data));
+      conn.on('data', (data) => {
+        // First real data from the host = the link is live → run the game.
+        if (data && data.type === 'hello') me.onState({ stage: 'connected', code: me.roomCode });
+        me.onData(data);
+      });
       conn.on('close', () => me.onState({ stage: 'dropped' }));
       conn.on('error', () => me.onState({ stage: 'dropped' }));
     });

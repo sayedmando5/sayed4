@@ -111,6 +111,33 @@ h1.title {
 .btn.pink { background: linear-gradient(180deg, #ff8bd1, #e05aa8); color: #20102a; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 16px;
+}
+.mtab {
+  flex: 1;
+  padding: 11px 12px;
+  border: none;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: #9fb0cf;
+  font-family: inherit;
+  transition: all .12s ease;
+}
+.mtab.active {
+  background: linear-gradient(180deg, #33405e, #26314a);
+  color: #ffd76b;
+  box-shadow: inset 0 0 0 1px rgba(140,170,220,0.3);
+}
+
 .charPick { display: flex; gap: 14px; margin: 14px 0 6px; }
 .charPick .char {
   flex: 1;
@@ -277,7 +304,8 @@ canvas.game-canvas {
   -webkit-user-select: none;
   touch-action: none;
 }
-.touch-cluster.split { width: 50%; }
+.touch-cluster.split { width: 50%; align-items: stretch; }
+.touch-cluster.split .move-grp { justify-content: space-between; }
 .touch-cluster.solo { width: 100%; flex-direction: row; justify-content: space-between; align-items: flex-end; }
 
 .move-grp { display: flex; gap: 10px; }

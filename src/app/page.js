@@ -196,6 +196,9 @@ export default function Page() {
           <UIOverlay
             data={live}
             status={netStatus?.stage === 'connected' ? status : (sessionRef.current.mode === 'local' ? status : 'waiting')}
+            roomCode={roomCode}
+            role={sessionRef.current.role}
+            joinedCode={code}
             onRetry={onRetry}
             onContinue={onContinue}
             onHome={goHome}
