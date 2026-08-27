@@ -106,7 +106,11 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome, r
           <div className="big-emoji">🏆</div>
           <h2>أحسنتما!</h2>
           <p>لقد اجتزتما هذه المرحلة معاً. استعدّا للتحدي التالي…</p>
-          <button className="btn" onClick={onContinue}>متابعة ▶️</button>
+          {role === 'host' || role === undefined ? (
+            <button className="btn" onClick={onContinue}>متابعة ▶️</button>
+          ) : (
+            <p className="muted">⏳ في انتظار المضيف ليأخذكما للعالم التالي…</p>
+          )}
         </Overlay>
       )}
 

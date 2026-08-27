@@ -66,12 +66,17 @@ export class Game {
 
     // instantiate entities
     this.platforms = (lvl.platforms || []).map((p) => ({ ...p, base: p }));
-    this.objects = (lvl.objects || []).map((o) => ({ ...o, spawn: { ...o } }));
+    // Give every object a stable unique key so the host→guest snapshot can
+    // match them one-to-one (coins, crates, plates, doors, lasers…).
+    this.objects = (lvl.objects || []).map((o, i) => {
+      const id = o.id || `obj-${i}`;
+      return { ...o, _i: i, _key: `${o.type}:${id}`, id: (o.id || id), spawn: { ...o } };
+    });
     // The level's goal lives at the top level, but the win scanner looks in
     // `objects` — inject it so the win condition can actually fire.
-    if (lvl.goal) this.objects.push({ ...lvl.goal, spawn: { ...lvl.goal } });
-    this.coins = (lvl.coins || []).map((c) => ({ ...c }));
-    this.stars = (lvl.stars || []).map((s) => ({ ...s }));
+    if (lvl.goal) this.objects.push({ ...lvl.goal, _i: -1, _key: `goal`, id: 'goal', spawn: { ...lvl.goal } });
+    this.coins = (lvl.coins || []).map((c, i) => ({ ...c, id: c.id || `coin-${i}` }));
+    this.stars = (lvl.stars || []).map((s, i) => ({ ...s, id: s.id || `star-${i}` }));
     this.hints = (lvl.hints || []).map((h) => ({ ...h }));
     this.decor = (lvl.decorations || []).map((d) => ({ ...d }));
 
@@ -180,7 +185,7 @@ export class Game {
     return this.objects
       .filter((o) => o.type !== 'decor')
       .map((o) => ({
-        id: o.id || o._i,
+        key: o._key,
         type: o.type,
         x: o.x, y: o.y, w: o.w, h: o.h,
         open: o.open, active: o.active, pressed: o.pressed,
@@ -214,15 +219,10 @@ export class Game {
     this.lives = snap.lives;
     this.checkpoint = snap.checkpoint;
     const map = {};
-    for (const o of snap.objects) map[o.type + ':' + o.id] ||= [];
-    for (const o of snap.objects) {
-      (map[o.type + ':' + o.id] = map[o.type + ':' + o.id] || []).push(o);
-    }
+    for (const o of snap.objects) map[o.key] = o;   // one snapshot per key
     for (const obj of this.objects) {
-      const key = obj.type + ':' + (obj.id || obj._i);
-      const list = map[key];
-      if (list && list.length) {
-        const o = list[0];
+      const o = map[obj._key];
+      if (o) {
         obj.open = o.open; obj.active = o.active; obj.pressed = o.pressed;
         obj.hacked = o.hacked; obj.pulled = o.pulled; obj._dead = o.dead;
         obj._fall = o.fall; obj._crumbleT = o.crumbleT; obj._on = o._on;
@@ -241,6 +241,20 @@ export class Game {
       this.boss.hp = snap.boss.hp; this.boss.dead = snap.boss.dead;
       this.boss.x = snap.boss.x; this.boss.y = snap.boss.y; this.boss.shield = snap.boss.shield;
       this.boss.orbs = (snap.boss.orbs || []).map((o) => ({ x: o.x, y: o.y, vx: 0, vy: 0, t: 0 }));
+    }
+    // Rebuild the guest-side light-bridge registry from the synced objects so
+    // bridges (and their platforms) appear/disappear like on the host.
+    this.activeBridge = {};
+    for (const o of this.objects) {
+      if (o.type === 'lightbeam' && o.active) {
+        const bw = o.bridgeW || o.w;
+        const bx = o.bridgeX != null ? o.bridgeX : o.x;
+        const by = o.bridgeY != null ? o.bridgeY : o.y;
+        o._bridge = { x: bx, y: by, w: bw, h: 16 };
+        this.activeBridge[o.id || o._key] = { active: true, _bridge: o._bridge };
+      } else if (o.type === 'lightbeam') {
+        o._bridge = null;
+      }
     }
   }
 
@@ -601,8 +615,22 @@ export class Game {
         case 'crate': case 'heavycrate': this._updateCrate(o, dt); break;
         case 'crumble': this._updateCrumble(o, dt); break;
         case 'laser': this._updateLaser(o, dt); break;
-        case 'lightbeam': this._refreshBeam(o.id || o._i); break;
+        case 'enemy': this._updateEnemy(o, dt); break;
+        case 'lightbeam': this._refreshBeam(o.id); break;
       }
+    }
+  }
+
+  _updateEnemy(o, dt) {
+    if (o._t === undefined) o._t = 0;
+    o._t += dt * (o.speed / 100);
+    const base = o.spawn || o;
+    if (o.kind === 'flyer') {
+      o.y = base.y + Math.sin(o._t * 2) * ((o.range || 120) / 2);
+      o.x = base.x;   // hover in place, bob vertically
+    } else {
+      o.x = base.x + Math.sin(o._t * 2) * ((o.range || 120) / 2);
+      o.y = base.y;   // patrol horizontally on the ground
     }
   }
 
@@ -705,13 +733,28 @@ export class Game {
   }
 
   _checkWorld() {
-    // player fell out of world
+    // player fell out of world / touched a hazard (unless they stomped)
     for (const id of ['sayed', 'yasmin']) {
       const p = this.players[id];
       if (!p.alive) continue;
       const below = p.y > this.WORLD_H + 60;
+      if (below) { this._kill(id, 'fall'); continue; }
+      // stomp (jump onto an enemy's head) → defeat it & bounce instead of dying
+      for (const o of this.objects) {
+        if (o.type === 'enemy' && !o._dead && overlaps(p, o)) {
+          const pCenterY = p.y + p.h / 2;
+          const eCenterY = o.y + o.h / 2;
+          if (p.vy > 0 && pCenterY < eCenterY) {
+            o._dead = true;
+            p.vy = -680;
+            this._emit('sfx', 'stomp');
+            this._emit('coop', 'stomp');
+            break;
+          }
+        }
+      }
       const touch = this._touchHazard(p);
-      if (below || touch) this._kill(id, 'fall');
+      if (touch) this._kill(id, touch);
     }
   }
 
@@ -720,7 +763,11 @@ export class Game {
     for (const o of this.objects) {
       if (o.type === 'spike' && overlaps(body, o)) return 'spike';
       if (o.type === 'laser' && o._on !== false && overlaps(body, o)) return 'laser';
-      if (o.type === 'enemy' && !o._dead && overlaps(body, o)) return 'enemy';
+      if (o.type === 'enemy' && !o._dead && overlaps(body, o)) {
+        // if the player is falling onto the top we already stomped (no wait);
+        // otherwise it hurts
+        return 'enemy';
+      }
     }
     if (this.boss && !this.boss.dead && overlaps(body, this.boss)) return 'boss';
     return null;
@@ -894,6 +941,11 @@ export class Game {
   update(dt, inputs) {
     this.step(dt, inputs);
     this._collectibles();
+    // Deliver any queued events to the UI callback (win, gameover, toasts,
+    // sfx, collect, coop…) — this is what actually drives the overlays + sound.
+    const evs = this.events;
+    this.events = [];
+    for (const ev of evs) this.onEvent(ev);
   }
 
   _emit(type, data, extra) {
@@ -1204,11 +1256,35 @@ export class Game {
         break;
       }
       case 'lightbeam': {
-        const on = this.activeBridge[o.id || o._i]?.active;
+        const on = this.activeBridge[o.id || o._key]?.active;
         ctx.fillStyle = on ? '#ffd76b' : '#6a6a7a';
         ctx.beginPath();
         ctx.moveTo(o.x, o.y); ctx.lineTo(o.x + o.w, o.y);
         ctx.lineTo(o.x + o.w / 2, o.y + 46); ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'enemy': {
+        if (o._dead) break;
+        const bob = Math.sin(this.animT * 5 + (o._t || 0)) * 3;
+        if (o.kind === 'flyer') {
+          ctx.fillStyle = '#8a5fff';
+          ctx.beginPath();
+          ctx.moveTo(o.x, o.y + o.h);
+          ctx.lineTo(o.x + o.w / 2, o.y + bob);
+          ctx.lineTo(o.x + o.w, o.y + o.h);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#c9b0ff';
+          ctx.beginPath(); ctx.arc(o.x + o.w / 2, o.y + 4 + bob, 7, 0, Math.PI * 2); ctx.fill();
+        } else {
+          // slime blob
+          ctx.fillStyle = '#5ac86a';
+          const sq = 8 + Math.sin(this.animT * 6 + (o._t || 0)) * 2;
+          ctx.beginPath();
+          ctx.ellipse(o.x + o.w / 2, o.y + o.h - 8, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.5)';
+          ctx.beginPath(); ctx.arc(o.x + o.w / 2 - 6, o.y + o.h - 14, 3, 0, Math.PI * 2); ctx.fill();
+        }
         break;
       }
       case 'hint': break;

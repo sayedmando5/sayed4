@@ -176,7 +176,7 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
       if (winPending) return;
       winPending = true;
       const total = levelCount();
-      const final = session.levelIndex >= total - 1;
+      const final = sessionRef.current.levelIndex >= total - 1;
       if (final) {
         game.setPaused(true);
         if (cbRef.current.onVictory) cbRef.current.onVictory();
@@ -184,35 +184,69 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
         winPending = false;
         return;
       }
+      // Freeze the sim and show the "level complete" panel. The HOST calls
+      // `advance()` to move everyone to the next world; the guest follows.
       game.setPaused(true);
-      if (cbRef.current.onWin) cbRef.current.onWin(session.levelIndex);
+      if (cbRef.current.onWin) cbRef.current.onWin(sessionRef.current.levelIndex);
       if (net) net.broadcastEvent({ type: 'win' });
-      setTimeout(() => {
-        const next = sessionRef.current.levelIndex + 1;
-        gameRef.current = game;
-        sessionRef.current.levelIndex = next;
-        // rebuild with the next world
-        const g2 = new Game({
-          levelIndex: next, role: session.role, mode: session.mode,
-          ctx, canvas, zoom: 1, avatars: game.avatars, sprites: game.sprites, onEvent: (e2) => handleEvent(e2),
-        });
-        gameRef.current = g2;
-        g2.setPaused(false);
-        winPending = false;
-        if (cbRef.current.onStatus) cbRef.current.onStatus('play');
-      }, 2600);
+    }
+
+    // HOST (or local) advances to the next level. Guests just receive the new
+    // snapshot with a different level index and auto-follow.
+    function advance() {
+      const next = sessionRef.current.levelIndex + 1;
+      if (next >= levelCount()) { cbRef.current.onVictory?.(); return; }
+      sessionRef.current.levelIndex = next;
+      const g2 = new Game({
+        levelIndex: next, role: session.role, mode: session.mode,
+        ctx, canvas, zoom: 1, avatars: game.avatars, sprites: game.sprites, onEvent: (e2) => handleEvent(e2),
+      });
+      gameRef.current = g2;
+      g2.setPaused(!sessionRef.current.running);
+      winPending = false;
+      if (cbRef.current.onStatus) cbRef.current.onStatus('play');
     }
 
     // tiny debug hook so automated tests can verify net sync
     if (typeof window !== 'undefined') {
-      window.__syo = () => ({
-        level: gameRef.current?.levelIndex,
-        sayed: gameRef.current?.players?.sayed?.x,
-        yasmin: gameRef.current?.players?.yasmin?.x,
-      });
+      window.__syo = () => {
+        const g = gameRef.current;
+        return {
+          level: g?.levelIndex,
+          sayed: g?.players?.sayed?.x,
+          yasmin: g?.players?.yasmin?.x,
+          coinsTaken: g ? g.coins.filter((c) => c.taken).length : 0,
+          crates: g ? g.objects.filter((o) => o.type === 'crate' || o.type === 'heavycrate').map((c) => Math.round(c.x)) : [],
+          doorOpen: g ? g.objects.filter((o) => o.type === 'door' || o.type === 'gate').map((d) => !!d.open) : [],
+          hints: g ? g.coins.length : 0,
+        };
+      };
+      // test-only helpers to drive state on the authority (host) side
+      window.__syoTest = {
+        collectFirstCoin() {
+          const g = gameRef.current;
+          const c = g && g.coins.find((x) => !x.taken);
+          if (c) { c.taken = true; g._collectibles(); }
+        },
+        pushFirstCrate() {
+          const g = gameRef.current;
+          const c = g && g.objects.find((o) => o.type === 'crate');
+          if (c) c.x += 60;
+        },
+        finishLevel() {
+          const g = gameRef.current;
+          const goal = g && g.objects.find((o) => o.type === 'goal');
+          if (goal) {
+            // place both players' centres inside the goal volume, then scan
+            g.players.sayed.x = goal.x; g.players.sayed.y = goal.y + 10; g.players.sayed.alive = true;
+            g.players.yasmin.x = goal.x + goal.w - 40; g.players.yasmin.y = goal.y + 10; g.players.yasmin.alive = true;
+            g._collectibles();
+          }
+        },
+      };
     }
 
-    // expose retry for parent UI
+    // expose retry/advance for parent UI (host drives progression)
     const api = {
       retry() {
         if (sessionRef.current.role === 'guest' && net) {
@@ -221,6 +255,11 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
         } else {
           rebuild(sessionRef.current.levelIndex);
         }
+      },
+      advance() {
+        // Only the authority (host/local) advances; guests follow the snapshot.
+        if (sessionRef.current.role === 'guest') return;
+        advance();
       },
       getLevel() { return sessionRef.current.levelIndex; },
     };

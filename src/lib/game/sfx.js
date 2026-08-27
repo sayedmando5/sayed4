@@ -47,6 +47,7 @@ const MAP = {
   checkpoint: () => { tone(660, 0.08, 'triangle', 0.14); tone(880, 0.1, 'triangle', 0.14, 0.08); },
   teleport: () => { tone(400, 0.2, 'sine', 0.12, 0, 500); tone(900, 0.2, 'sine', 0.1, 0.1, 300); },
   crumble: () => tone(140, 0.2, 'triangle', 0.14, 0, -60),
+  stomp: () => { tone(200, 0.1, 'square', 0.14, 0, 120); tone(500, 0.12, 'triangle', 0.12, 0.05, 200); },
   bossHit: () => { tone(120, 0.3, 'sawtooth', 0.2, 0, -40); tone(60, 0.3, 'square', 0.12, 0.1, -20); },
   bossDie: () => { tone(200, 0.6, 'sawtooth', 0.2, 0, -160); tone(100, 0.6, 'square', 0.14, 0.2, -60); },
   shoot: () => tone(180, 0.12, 'sawtooth', 0.08, 0, -80),

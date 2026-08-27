@@ -129,8 +129,8 @@ export default function Page() {
   };
 
   const onContinue = () => {
-    // the host already advances after the delay; just clear the overlay
-    setStatus('play');
+    // HOST (or local) drives progression to the next world.
+    if (sessionRef.current._api && sessionRef.current._api.advance) sessionRef.current._api.advance();
   };
 
   return (

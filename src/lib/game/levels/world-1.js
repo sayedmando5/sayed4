@@ -8,7 +8,8 @@
 // ============================================================================
 import {
   solid, ground, oneway, movingY, spring, crate, plate, door, hack, lightbeam,
-  checkpoint, coin, star, hint, goal, tree, rock, crystal, glow,
+  checkpoint, coin, star, hint, goal, tree, rock, crystal, glow, slime, flyer,
+  spike,
 } from './helpers.js';
 
 export default {
@@ -71,6 +72,12 @@ export default {
     plate(1830, 628, 62, 22, { weight: 2, who: 'sayed', latch: true, connected: ['beam-a'] }),
     hack(2020, 250, { connected: ['beam-a'], who: 'yasmin' }),
     lightbeam(2000, 268, 150, 20, { id: 'beam-a', bridgeX: 1900, bridgeW: 380, bridgeY: 560 }),
+
+    // — gentle encounters (jump over them) —
+    slime(720, 626, 220, 70),
+    slime(2650, 626, 200, 80),
+    flyer(3000, 300, 220, 110),
+    spike(2820, 628, 60, 22, 'up'),
 
     checkpoint(1750, 580),
   ],
