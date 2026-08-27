@@ -340,6 +340,8 @@ export class Game {
         out.push({ x: o.x, y: o.y, w: o.w, h: o.h, kind: 'wall', ref: o });
       } else if (o.type === 'crate' || o.type === 'heavycrate') {
         out.push({ x: o.x, y: o.y, w: o.w, h: o.h, kind: 'crate', ref: o });
+      } else if (o.type === 'breakable' && !o._dead) {
+        out.push({ x: o.x, y: o.y, w: o.w, h: o.h, kind: 'wall', ref: o });
       }
     }
     // spawned light bridges (one-way)
@@ -399,15 +401,24 @@ export class Game {
       }
     }
 
-    // jumping
-    if (input.jumpPressed) {
+    // jumping (with a small input buffer so a tap just before landing still
+    // registers — feels responsive like a real platformer)
+    if (input.jumpPressed) p._jumpBuffer = 0.12;
+    if (p._jumpBuffer !== undefined) {
+      p._jumpBuffer -= dt;
+      if (p._jumpBuffer <= 0) p._jumpBuffer = undefined;
+    }
+    const wantJump = p._jumpBuffer !== undefined;
+    if (wantJump) {
       if (p.grounded) {
         p.vy = -cfg.jumpVel;
         p.jumps = 1;
         p.grounded = false;
+        p._jumpBuffer = undefined;
       } else if (cfg.doubleJump && p.jumps < cfg.jumpCount) {
         p.vy = -cfg.jumpVel * 0.92;
         p.jumps++;
+        p._jumpBuffer = undefined;
         this._emit('sfx', 'jump2');
       }
     }
@@ -553,8 +564,8 @@ export class Game {
   // ---- interactions -------------------------------------------------------
   _tryInteract(id, p) {
     const reach = 78;
-    // levers (Sayed pulls)
     for (const o of this.objects) {
+      // levers (Sayed pulls)
       if (o.type === 'lever' && !o.pulled && this._near(o, p, reach)) {
         if (p.cfg.strong) {
           o.pulled = true;
@@ -562,11 +573,22 @@ export class Game {
           this._activateConnected(o);
         }
       }
+      // hack terminals (Yasmin)
       if (o.type === 'hack' && !o.hacked && this._near(o, p, reach)) {
         if (o.who ? o.who === p.id : !p.cfg.strong) {
           o.hacked = true;
           this._emit('sfx', 'hack');
           this._activateConnected(o);
+        }
+      }
+      // breakable crates (Sayed smashes them) → spawn a coin & clear the path
+      if (o.type === 'breakable' && !o._dead && this._near(o, p, reach)) {
+        if (p.cfg.strong) {
+          o._dead = true;
+          this._emit('sfx', 'break');
+          this._emit('coop', 'sayed_broke_a_crate');
+          // drop a coin where the crate was so smashing rewards you
+          this.coins.push({ ...o, type: undefined, id: `coin-brk-${o._i}`, x: o.x + o.w / 2 - 10, y: o.y - 26, w: 20, h: 20, taken: false });
         }
       }
     }
@@ -1197,6 +1219,24 @@ export class Game {
         ctx.moveTo(o.x, o.y); ctx.lineTo(o.x + o.w, o.y + o.h);
         ctx.moveTo(o.x + o.w, o.y); ctx.lineTo(o.x, o.y + o.h);
         ctx.stroke();
+        break;
+      }
+      case 'breakable': {
+        if (o._dead) break;
+        ctx.fillStyle = '#b98a4a';
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 3;
+        ctx.strokeRect(o.x, o.y, o.w, o.h);
+        // cracks + crossbeam so it reads as "smashable"
+        ctx.strokeStyle = '#7a4a20'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(o.x + 8, o.y + 8); ctx.lineTo(o.x + o.w - 6, o.y + o.h - 4);
+        ctx.moveTo(o.x + o.w - 8, o.y + 6); ctx.lineTo(o.x + 6, o.y + o.h - 8);
+        ctx.stroke();
+        // sparkle hint
+        ctx.fillStyle = 'rgba(255,230,150,0.9)';
+        ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('✦', o.x + o.w / 2, o.y - 3);
         break;
       }
       case 'spike': {

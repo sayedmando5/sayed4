@@ -12,9 +12,12 @@ export default function Lobby({
   onCreate,
   onJoin,
   onBack,
+  startLevel,
+  setStartLevel,
+  levels,
 }) {
   const charOptions = [
-    { id: 'sayed', label: 'سيد', desc: 'قوي — يرمي ويسحب ويكسر', sel: 'sel-sayed' },
+    { id: 'sayed', label: 'سيد', desc: 'قوي — يعلّق يكسّر ويسحب', sel: 'sel-sayed' },
     { id: 'yasmin', label: 'ياسمين', desc: 'رشيقة — قفزة مزدوجة واختراق', sel: 'sel-yasmin' },
   ];
 
@@ -55,6 +58,23 @@ export default function Lobby({
 
       {mode === 'create' ? (
         <>
+          {/* starting world (host decides where the adventure begins) */}
+          <div className="levelpick">
+            <div className="lbl">🌍 نبدأ من العالم:</div>
+            <div className="level-scroll">
+              {(levels || []).map((l, i) => (
+                <button
+                  key={l.id}
+                  className={`levelchip ${startLevel === i ? 'active' : ''}`}
+                  onClick={() => setStartLevel(i)}
+                >
+                  {i + 1}
+                  <span>{l.arabicName}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="btnrow" style={{ marginTop: 20 }}>
             <button className="btn green" onClick={onCreate} disabled={netStatus?.stage === 'waiting'}>
               {netStatus?.stage === 'waiting' ? '⏳ في انتظار الشريك…' : '✨ إنشاء الغرفة'}
@@ -75,13 +95,15 @@ export default function Lobby({
           <div className="field">
             <input
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="SYO-XXXXX"
-              maxLength={9}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="مثال: 4179"
+              maxLength={4}
             />
           </div>
           <div className="btnrow" style={{ marginTop: 16 }}>
-            <button className="btn green" onClick={onJoin} disabled={code.length < 6 || netStatus?.stage === 'connecting'}>
+            <button className="btn green" onClick={onJoin} disabled={code.length < 4 || netStatus?.stage === 'connecting'}>
               {netStatus?.stage === 'connecting' ? '⏳ جارٍ الاتصال…' : '🔗 انضمام'}
             </button>
           </div>

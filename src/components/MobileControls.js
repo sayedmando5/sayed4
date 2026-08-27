@@ -3,7 +3,7 @@
 // On-screen touch controls so the game runs great on phones/tablets.
 // Each device renders a control cluster ONLY for the character(s) it controls,
 // so in online mode each player uses their own phone.
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 const CHAR_META = {
   sayed: { label: 'سيد', color: '#8ea9c8' },
@@ -11,16 +11,24 @@ const CHAR_META = {
 };
 
 // A single press/release button wired to pointer events (works for touch + mouse).
+// Each pointer is captured, so pressing one button NEVER cancels another held
+// with a different finger — the classic "move releases when I press jump" bug
+// is avoided by releasing only on that pointer's own up/cancel.
 function Pad({ onPress, onRelease, className, children, label }) {
+  useEffect(() => () => { try { onRelease && onRelease(); } catch (e) {} }, []); // eslint-disable-line
+
   return (
     <button
       type="button"
       className={`pad ${className || ''}`}
       aria-label={label}
-      onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); onPress(); }}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch (_) {}
+        onPress();
+      }}
       onPointerUp={(e) => { e.preventDefault(); onRelease(); }}
       onPointerCancel={() => onRelease()}
-      onPointerLeave={() => onRelease()}
       onContextMenu={(e) => e.preventDefault()}
     >
       {children}

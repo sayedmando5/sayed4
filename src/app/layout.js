@@ -5,6 +5,12 @@ export const metadata = {
   description:
     'An online 2-player co-op puzzle-platformer. Two hearts, one journey — help سيد and ياسمين solve impossible puzzles together.',
   keywords: 'co-op, puzzle platformer, multiplayer, webrtc, sayed, yasmin, game',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'سيد وياسمين' },
+  icons: {
+    icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+  },
 };
 
 export const viewport = {

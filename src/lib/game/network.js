@@ -7,13 +7,12 @@
 // ============================================================================
 import Peer from 'peerjs';
 
-const CODE_PREFIX = 'SYO-';
-
+// Short, easy-to-type numeric room codes (e.g. "4179"). 4 digits are enough to
+// avoid collisions while staying trivially memorable on a phone.
 function makeCode() {
   let s = '';
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return CODE_PREFIX + s;
+  for (let i = 0; i < 4; i++) s += Math.floor(Math.random() * 10);
+  return s;
 }
 
 export class Network {

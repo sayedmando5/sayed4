@@ -17,6 +17,13 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome, r
     } catch (e) { /* ignore */ }
   };
 
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen?.();
+    } catch (e) { /* ignore */ }
+  };
+
   const souls = (id) => {
     const n = lives?.[id] ?? 0;
     return Array.from({ length: 3 }, (_, i) => <span key={i} className={i < n ? '' : 'off'}>❤️</span>);
@@ -24,6 +31,12 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome, r
 
   return (
     <div className="hud">
+      {/* floating utility buttons (fullscreen + menu) — always interactive */}
+      <div className="hud-tools">
+        <button className="tool-btn" aria-label="ملء الشاشة" onClick={toggleFullscreen} title="ملء الشاشة">⛶</button>
+        <button className="tool-btn" aria-label="القائمة" onClick={onHome} title="القائمة الرئيسية">☰</button>
+      </div>
+
       {/* top left: players + lives */}
       <div className="hud-top">
         <div className="hud-panel">

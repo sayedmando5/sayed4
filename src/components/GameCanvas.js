@@ -44,6 +44,11 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
   cbRef.current = { onHud, onWin, onVictory, onGameOver, onStatus };
 
   useEffect(() => {
+    // register service worker for PWA/installable app support
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     const session = sessionRef.current;
     const canvas = canvasRef.current;
     canvas.width = VIEW_W;
@@ -221,29 +226,6 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
           hints: g ? g.coins.length : 0,
         };
       };
-      // test-only helpers to drive state on the authority (host) side
-      window.__syoTest = {
-        collectFirstCoin() {
-          const g = gameRef.current;
-          const c = g && g.coins.find((x) => !x.taken);
-          if (c) { c.taken = true; g._collectibles(); }
-        },
-        pushFirstCrate() {
-          const g = gameRef.current;
-          const c = g && g.objects.find((o) => o.type === 'crate');
-          if (c) c.x += 60;
-        },
-        finishLevel() {
-          const g = gameRef.current;
-          const goal = g && g.objects.find((o) => o.type === 'goal');
-          if (goal) {
-            // place both players' centres inside the goal volume, then scan
-            g.players.sayed.x = goal.x; g.players.sayed.y = goal.y + 10; g.players.sayed.alive = true;
-            g.players.yasmin.x = goal.x + goal.w - 40; g.players.yasmin.y = goal.y + 10; g.players.yasmin.alive = true;
-            g._collectibles();
-          }
-        },
-      };
     }
 
     // expose retry/advance for parent UI (host drives progression)
@@ -286,9 +268,10 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
       inp.left = held(map.left) || t.left;
       inp.right = held(map.right) || t.right;
       inp.jump = held(map.jump) || t.jump;
-      inp.jumpPressed = (now - es.jump < 60) || (now - t.jumpAt < 60);
-      inp.interact = (now - es.interact < 60) || (now - t.interactAt < 60);
-      inp.throw = (now - es.throw < 60) || (now - t.throwAt < 60);
+      inp.jumpPressed = (now - es.jump < 100) || (now - t.jumpAt < 100);
+      inp.interact = (now - es.interact < 90) || (now - t.interactAt < 90);
+      inp.throw = (now - es.throw < 90) || (now - t.throwAt < 90);
+      inp.jumpHeld = inp.jump;   // mirrored for engine buffering
       return inp;
     }
 

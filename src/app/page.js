@@ -16,6 +16,7 @@ export default function Page() {
   const [myChar, setMyChar] = useState('sayed');
   const [code, setCode] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const [startLevel, setStartLevel] = useState(0);
   const [netStatus, setNetStatus] = useState({});
   const [live, setLive] = useState({});
   const [status, setStatus] = useState('play');        // play | waiting | complete | gameover | victory
@@ -68,7 +69,7 @@ export default function Page() {
     sessionRef.current.character = myChar;
     sessionRef.current.roomCode = rc;
     sessionRef.current.running = false;
-    sessionRef.current.levelIndex = 0;
+    sessionRef.current.levelIndex = startLevel;
     setStatus('waiting');
     setScreen('game');
   };
@@ -159,6 +160,9 @@ export default function Page() {
             onCreate={onCreate}
             onJoin={onJoin}
             onBack={() => { setScreen('home'); setLobbyMode('create'); }}
+            startLevel={startLevel}
+            setStartLevel={setStartLevel}
+            levels={LEVELS}
           />
         </div>
       )}
