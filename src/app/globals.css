@@ -354,6 +354,9 @@ canvas.game-canvas {
   align-items: flex-end;
   justify-content: space-between;
   padding: 0 12px 18px;
+  /* Force LTR so the movement keys are NOT mirrored by the RTL document:
+     left key always on the left, right key always on the right. */
+  direction: ltr;
 }
 .touch-cluster {
   pointer-events: auto;
@@ -364,6 +367,7 @@ canvas.game-canvas {
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  direction: ltr;
 }
 .touch-cluster.split { width: 50%; align-items: stretch; }
 .touch-cluster.split .move-grp { justify-content: space-between; }

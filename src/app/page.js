@@ -20,6 +20,7 @@ export default function Page() {
   const [netStatus, setNetStatus] = useState({});
   const [live, setLive] = useState({});
   const [status, setStatus] = useState('play');        // play | waiting | complete | gameover | victory
+  const [paused, setPaused] = useState(false);          // paused via ⏸ button
 
   const netRef = useRef(null);
   const sessionRef = useRef({
@@ -44,7 +45,10 @@ export default function Page() {
     cleanupNet();
     setScreen('home');
     setStatus('play');
+    setPaused(false);
   };
+
+  const togglePause = () => setPaused((p) => !p);
 
   // ---------- ONLINE HOST ----------
   const onCreate = () => {
@@ -71,6 +75,7 @@ export default function Page() {
     sessionRef.current.running = false;
     sessionRef.current.levelIndex = startLevel;
     setStatus('waiting');
+    setPaused(false);
     setScreen('game');
   };
 
@@ -95,6 +100,7 @@ export default function Page() {
     sessionRef.current.running = false;
     sessionRef.current.levelIndex = 0;
     setStatus('waiting');
+    setPaused(false);
     setScreen('game');
   };
 
@@ -108,6 +114,7 @@ export default function Page() {
     sessionRef.current.levelIndex = 0;
     sessionRef.current.running = true;
     setStatus('play');
+    setPaused(false);
     setScreen('game');
   };
 
@@ -120,6 +127,7 @@ export default function Page() {
     sessionRef.current.levelIndex = i;
     sessionRef.current.running = true;
     setStatus('play');
+    setPaused(false);
     setScreen('game');
   };
 
@@ -127,11 +135,13 @@ export default function Page() {
     // GameCanvas exposes retry via session._setApi
     if (sessionRef.current._api && sessionRef.current._api.retry) sessionRef.current._api.retry();
     setStatus('play');
+    setPaused(false);
   };
 
   const onContinue = () => {
     // HOST (or local) drives progression to the next world.
     if (sessionRef.current._api && sessionRef.current._api.advance) sessionRef.current._api.advance();
+    setPaused(false);
   };
 
   return (
@@ -195,7 +205,8 @@ export default function Page() {
             onWin={() => setStatus('complete')}
             onVictory={() => setStatus('victory')}
             onGameOver={() => setStatus('gameover')}
-            onStatus={(s) => setStatus(s)}
+            onStatus={(s) => { setStatus(s); if (s === 'play') setPaused(false); }}
+            paused={paused}
           />
           <UIOverlay
             data={live}
@@ -203,6 +214,8 @@ export default function Page() {
             roomCode={roomCode}
             role={sessionRef.current.role}
             joinedCode={code}
+            paused={paused}
+            onPause={togglePause}
             onRetry={onRetry}
             onContinue={onContinue}
             onHome={goHome}

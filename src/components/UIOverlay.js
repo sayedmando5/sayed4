@@ -1,13 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const TOTAL_LEVELS = 8;
 
-export default function UIOverlay({ data, status, onRetry, onContinue, onHome, roomCode, role, joinedCode }) {
+export default function UIOverlay({ data, status, onRetry, onContinue, onHome, onPause, paused, roomCode, role, joinedCode }) {
   const { lives, levelIndex, time, hint, boss, worldName, arabicName, toast } = data || {};
   const num = (levelIndex ?? 0) + 1;
   const [copied, setCopied] = useState(false);
+
+  // Toasts are one-shot messages — show them, then auto-dismiss so they never
+  // pile up and block the screen.
+  const idRef = useRef(0);
+  const [visToast, setVisToast] = useState({ text: '', id: 0 });
+  const [visCoop, setVisCoop] = useState({ text: '', id: 0 });
+
+  useEffect(() => {
+    if (!toast) { setVisToast((s) => (s.text ? { text: '', id: s.id } : s)); return; }
+    const id = ++idRef.current;
+    setVisToast({ text: toast, id });
+    const t = setTimeout(() => setVisToast((s) => (s.id === id ? { ...s, text: '' } : s)), 3600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!data?.coop) { setVisCoop((s) => (s.text ? { text: '', id: s.id } : s)); return; }
+    const id = ++idRef.current;
+    setVisCoop({ text: data.coop, id });
+    const t = setTimeout(() => setVisCoop((s) => (s.id === id ? { ...s, text: '' } : s)), 3600);
+    return () => clearTimeout(t);
+  }, [data?.coop]);
 
   const copyCode = async () => {
     try {
@@ -31,10 +53,10 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome, r
 
   return (
     <div className="hud">
-      {/* floating utility buttons (fullscreen + menu) — always interactive */}
+      {/* floating utility buttons (fullscreen + pause) — always interactive */}
       <div className="hud-tools">
         <button className="tool-btn" aria-label="ملء الشاشة" onClick={toggleFullscreen} title="ملء الشاشة">⛶</button>
-        <button className="tool-btn" aria-label="القائمة" onClick={onHome} title="القائمة الرئيسية">☰</button>
+        <button className="tool-btn" aria-label="إيقاف مؤقت" onClick={onPause} title="إيقاف مؤقت">⏸</button>
       </div>
 
       {/* top left: players + lives */}
@@ -83,14 +105,28 @@ export default function UIOverlay({ data, status, onRetry, onContinue, onHome, r
         </div>
       </div>
 
-      {/* center toasts / coop */}
+      {/* center toasts / coop (auto-dismiss) */}
       <div className="hud-mid">
-        {data?.coop && <div className="toast">🤝 {data.coop}</div>}
-        {toast && <div className="toast">{toast}</div>}
+        {visCoop.text && <div className="toast">🤝 {visCoop.text}</div>}
+        {visToast.text && <div className="toast">{visToast.text}</div>}
       </div>
 
       {/* bottom hint */}
       {hint && <div className="hint">💡 {hint}</div>}
+
+      {/* ---------- PAUSE (toggled by ⏸) ---------- */}
+      {paused && status === 'play' && (
+        <Overlay>
+          <div className="big-emoji">⏸️</div>
+          <h2>إيقاف مؤقت</h2>
+          <p>اللعب متوقف. خذ نفساً، وتابعوا عندما تكونان جاهزَين.</p>
+          <div className="btnrow" style={{ flexDirection: 'column', alignItems: 'center' }}>
+            <button className="btn green" onClick={onPause}>▶️ متابعة اللعب</button>
+            <button className="btn ghost" onClick={onRetry}>🔄 إعادة المحاولة</button>
+            <button className="btn ghost" onClick={onHome}>🏠 الخروج للقائمة</button>
+          </div>
+        </Overlay>
+      )}
 
       {/* ---------- OVERLAYS ---------- */}
       {role === 'guest' && status === 'waiting' && (

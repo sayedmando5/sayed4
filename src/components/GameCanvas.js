@@ -23,7 +23,7 @@ function neutralInput(id) {
   return i;
 }
 
-export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOver, onStatus }) {
+export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOver, onStatus, paused }) {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const gameRef = useRef(null);
@@ -42,6 +42,10 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
   // callbacks kept in refs so the rAF loop always sees the latest
   const cbRef = useRef({ onHud, onWin, onVictory, onGameOver, onStatus });
   cbRef.current = { onHud, onWin, onVictory, onGameOver, onStatus };
+
+  // reflect the parent's "paused" flag (⏸ button) into the engine each frame
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   useEffect(() => {
     // register service worker for PWA/installable app support
@@ -220,6 +224,7 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
           level: g?.levelIndex,
           sayed: g?.players?.sayed?.x,
           yasmin: g?.players?.yasmin?.x,
+          lives: g ? { ...g.lives } : null,
           coinsTaken: g ? g.coins.filter((c) => c.taken).length : 0,
           crates: g ? g.objects.filter((o) => o.type === 'crate' || o.type === 'heavycrate').map((c) => Math.round(c.x)) : [],
           doorOpen: g ? g.objects.filter((o) => o.type === 'door' || o.type === 'gate').map((d) => !!d.open) : [],
@@ -286,8 +291,9 @@ export default function GameCanvas({ session, onHud, onWin, onVictory, onGameOve
       last = now;
       if (dt > 0.05) dt = 0.05;
 
-      // hold the simulation until both players are ready (online co-op)
-      gameRef.current.setPaused(!sessionRef.current.running);
+      // hold the simulation until both players are ready (online co-op),
+      // and while the player has hit the ⏸ pause button
+      gameRef.current.setPaused(!sessionRef.current.running || pausedRef.current);
 
       // determine which characters are controlled locally
       let localInputs = {};
